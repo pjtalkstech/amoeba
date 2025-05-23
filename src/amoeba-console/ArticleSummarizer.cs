@@ -45,10 +45,18 @@ public class ArticleSummarizer : IArticleSummarizer
 
     public async Task<bool> IsRelatedAsync(string summary, string articleContent)
     {
-        var isRelatedPrompt = $"Is the following article content related to this summary?\nSummary: {summary}\nArticle: {articleContent}\nRespond with only 'yes' or 'no'.";
-        var isRelatedFunc = _kernel.CreateFunctionFromPrompt(isRelatedPrompt);
-        var isRelatedResult = await _kernel.InvokeAsync(isRelatedFunc);
-        return isRelatedResult.ToString().Trim().ToLower().StartsWith("y");
+       try
+       {
+         var isRelatedPrompt = $"Is the following article content related to this summary?\nSummary: {summary}\nArticle: {articleContent}\nRespond with only 'yes' or 'no'.";
+         var isRelatedFunc = _kernel.CreateFunctionFromPrompt(isRelatedPrompt);
+         var isRelatedResult = await _kernel.InvokeAsync(isRelatedFunc);
+         return isRelatedResult.ToString().Trim().ToLower().StartsWith("y");
+       }
+       catch (System.Exception ex)
+       {
+        Console.WriteLine("Error in IsRelatedAsync: " + ex.Message);
+        return false; // Handle exceptions gracefully
+       }
     }
 
     public async Task<string> SummarizeRelatedArticlesAsync(IEnumerable<(string Title, string Content)> articles)
@@ -61,7 +69,7 @@ public class ArticleSummarizer : IArticleSummarizer
             relatedSummaries.Add($"- {article.Title}: {summaryResult.ToString().Trim()}");
         }
         var joinedSummaries = string.Join("\n", relatedSummaries);
-        var finalSummary = _kernel.CreateFunctionFromPrompt("Can you create coherent summary based on these articles and create a possible time line:\n{{$joinedSummaries}}");
+        var finalSummary = _kernel.CreateFunctionFromPrompt("Can you create coherent summary of 300 words based on these articles. Give a bit of background as 1 Paragraph and summaried content as another. Also Create a time line where possible:\n{{$joinedSummaries}}");
         var finalSummaryResult = await _kernel.InvokeAsync(finalSummary, new() { ["joinedSummaries"] = joinedSummaries });
         return finalSummaryResult.ToString().Trim();
     }

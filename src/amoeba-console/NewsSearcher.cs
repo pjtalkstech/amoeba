@@ -8,8 +8,8 @@ public class NewsSearcher : INewsSearcher
     {
         _search = new SearxNewsSearch(apiUrl);
     }
-    public async Task<IEnumerable<SearxNewsSearchResult>> SearchNewsAsync(string query)
+    public async Task<IEnumerable<SearxNewsSearchResult>> SearchNewsAsync(string query, int c = 10)
     {
-        return await _search.SearchNewsAsync(query);
+        return await _search.SearchNewsAsync(query, c);
     }
 }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.ServiceModel.Syndication;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
+using System.Diagnostics;
 
 class Program
 {
@@ -23,7 +24,7 @@ class Program
         INewsSearcher newsSearcher = new NewsSearcher("http://localhost:8081");
 
         // Fetch articles
-        var articles = await articleFetcher.FetchArticlesAsync("https://feeds.feedburner.com/ndtvnews-trending-news", 5);
+        var articles = await articleFetcher.FetchArticlesAsync("https://feeds.feedburner.com/ndtvnews-trending-news", 10);
         for (int i = 0; i < articles.Count; i++)
             Console.WriteLine($"{i}: {articles[i].Title.Text}");
 
@@ -36,47 +37,50 @@ class Program
         }
         var selected = articles[idx];
         Console.WriteLine($"\nYou selected: {selected.Title.Text}\n");
-
+        // Fetch article content
+        Stopwatch stopwatch = Stopwatch.StartNew();
         // Summarize and extract entities
         var summary = await summarizer.SummarizeAsync(selected.Summary.Text);
 
-      
+
         Console.WriteLine($"\nSummary:\n{summary.Summary}\n");
 
         // Search news
-        var results = await newsSearcher.SearchNewsAsync(summary.Summary);
-        
-        
+        var results = await newsSearcher.SearchNewsAsync(summary.Summary, 10);
+        var keywordSearch = string.Join(" ", summary.Keywords);
+        var keywordResult = await newsSearcher.SearchNewsAsync(keywordSearch, 5);
+        results = results.Concat(keywordResult).Distinct().ToList();
+
         // For each article in results, check if related and summarize
         if (results != null)
         {
-            // Fire all fetches in parallel
-            var fetchTasks = results.Select(article => articleFetcher.FetchArticleContentAsync(article.Url)).ToList();
-            var contents = await Task.WhenAll(fetchTasks);
+            // Start all fetches in parallel, keep track of their tasks and associated articles
+            var fetchTasks = results
+                .Select(article => (Task: articleFetcher.FetchArticleContentAsync(article.Url), Article: article))
+                .ToList();
 
             var relatedArticles = new List<(string Title, string Content)>();
-            var checkTasks = new List<Task>();
-            for (int i = 0; i < results.Count(); i++)
+            while (fetchTasks.Count > 0)
             {
-                var article = results.ElementAt(i);
-                var content = contents[i];
+                // Wait for any fetch to complete
+                var completed = await Task.WhenAny(fetchTasks.Select(ft => ft.Task));
+                var finishedTuple = fetchTasks.First(ft => ft.Task == completed);
+                fetchTasks.Remove(finishedTuple);
+
+                var content = await finishedTuple.Task;
+                var article = finishedTuple.Article;
                 if (string.IsNullOrWhiteSpace(content)) continue;
-                // Optionally, parallelize this too:
-                checkTasks.Add(Task.Run(async () =>
+
+                var isRelated = await summarizer.IsRelatedAsync(summary.Summary, content);
+                if (isRelated)
                 {
-                    var isRelated = await summarizer.IsRelatedAsync(summary.Summary, content);
-                    if (isRelated)
-                    {
-                        lock (relatedArticles)
-                        {
-                            relatedArticles.Add((article.Title, content));
-                        }
-                    }
-                }));
+                    relatedArticles.Add((article.Title, content));
+                }
             }
-            await Task.WhenAll(checkTasks);
             var finalSummary = await summarizer.SummarizeRelatedArticlesAsync(relatedArticles);
             Console.WriteLine("\nSummaries of related articles:\n" + finalSummary);
         }
+        Console.WriteLine($"Elapsed time: {stopwatch.ElapsedMilliseconds} ms");
+        Console.WriteLine("Press any key to exit...");
     }
 }

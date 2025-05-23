@@ -1,4 +1,4 @@
 public interface INewsSearcher
 {
-    Task<IEnumerable<SearxNewsSearchResult>> SearchNewsAsync(string query);
+    Task<IEnumerable<SearxNewsSearchResult>> SearchNewsAsync(string query, int count = 10);
 }

@@ -10,7 +10,8 @@ public class ArticleFetcher : IArticleFetcher
 {
     public async Task<List<SyndicationItem>> FetchArticlesAsync(string feedUrl, int count)
     {
-        return await Task.Run(() => {
+        return await Task.Run(() =>
+        {
             using var reader = XmlReader.Create(feedUrl);
             var feed = SyndicationFeed.Load(reader);
             return feed.Items.Take(count).ToList();
@@ -21,8 +22,12 @@ public class ArticleFetcher : IArticleFetcher
     {
         try
         {
+            var handler = new SocketsHttpHandler
+            {
+                MaxConnectionsPerServer = 20 // Or whatever you need
+            };
             Console.WriteLine($"Fetching article content from {url}");
-            using var http = new HttpClient();
+            using var http = new HttpClient(handler);
             var html = await http.GetStringAsync(url);
             var doc = new HtmlDocument();
             doc.LoadHtml(html);
@@ -36,7 +41,7 @@ public class ArticleFetcher : IArticleFetcher
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching article content: {ex.Message}");
+            Console.WriteLine($"Error fetching article content: {ex.Message} {url}");
             return string.Empty;
         }
     }
