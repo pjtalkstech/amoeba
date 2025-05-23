@@ -17,6 +17,17 @@ Amoeba Console is a C# .NET console application that summarizes news articles an
 - **NewsSearcher**: Searches news using Searx API
 - **Interfaces**: For dependency inversion and testability
 
+## Business Process Flow
+```mermaid
+flowchart LR
+    A[1.Display News Items] --> B[2.User Selects News]
+    B --> C[3.Summarize & Generate Keywords]
+    C --> D[4.Search Web for Related News]
+    D --> E[5.Check Relevance to Selected News]
+    E --> F[6.Summarize Relevant Articles]
+    F --> G[7.Present Full Summary with Background & Timeline]
+```
+
 ## Sequence Diagram
 ```mermaid
 sequenceDiagram
