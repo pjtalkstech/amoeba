@@ -38,30 +38,15 @@ class Program
         Console.WriteLine($"\nYou selected: {selected.Title.Text}\n");
 
         // Summarize and extract entities
-        var entityResult = await summarizer.SummarizeAsync(selected.Summary.Text);
-        string ExtractSummary(string output)
-        {
-            var match = System.Text.RegularExpressions.Regex.Match(output, @"<Summary>(.*?)</Summary>", System.Text.RegularExpressions.RegexOptions.Singleline);
-            if (match.Success)
-            {
-                return match.Groups[1].Value.Trim();
-            }
-            // fallback: first non-empty line
-            var lines = output.Split('\n');
-            foreach (var line in lines)
-            {
-                if (!string.IsNullOrWhiteSpace(line))
-                    return line.Trim();
-            }
-            return string.Empty;
-        }
-        var summary = ExtractSummary(entityResult);
-        Console.WriteLine($"\nSummary:\n{summary}\n");
+        var summary = await summarizer.SummarizeAsync(selected.Summary.Text);
+
+      
+        Console.WriteLine($"\nSummary:\n{summary.Summary}\n");
 
         // Search news
-        var results = await newsSearcher.SearchNewsAsync(summary);
-        Console.WriteLine($"\nEntities found:\n{entityResult}\n");
-
+        var results = await newsSearcher.SearchNewsAsync(summary.Summary);
+        
+        
         // For each article in results, check if related and summarize
         if (results != null)
         {
@@ -77,8 +62,9 @@ class Program
                 var content = contents[i];
                 if (string.IsNullOrWhiteSpace(content)) continue;
                 // Optionally, parallelize this too:
-                checkTasks.Add(Task.Run(async () => {
-                    var isRelated = await summarizer.IsRelatedAsync(summary, content);
+                checkTasks.Add(Task.Run(async () =>
+                {
+                    var isRelated = await summarizer.IsRelatedAsync(summary.Summary, content);
                     if (isRelated)
                     {
                         lock (relatedArticles)

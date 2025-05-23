@@ -21,7 +21,7 @@ public class SearxNewsSearch
     {
         using var http = new HttpClient();
         // You can change the instance if this one is slow or down
-        var apiUrl = $"{_searxUrl}/search?q={Uri.EscapeDataString(query)}&categories=news&format=json&language=en";
+        var apiUrl = $"{_searxUrl}/search?q={Uri.EscapeDataString(query)}&categories=general,news&format=json&language=en";
         var resp = await http.GetAsync(apiUrl);
         resp.EnsureSuccessStatusCode();
 

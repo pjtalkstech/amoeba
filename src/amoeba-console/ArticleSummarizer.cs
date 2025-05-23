@@ -2,6 +2,12 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
 
+public class ArticleSummary
+{
+    public string Summary { get; set; }
+    public List<string> Keywords { get; set; }
+    public List<string> Urls { get; set; }
+}
 public class ArticleSummarizer : IArticleSummarizer
 {
     private readonly Kernel _kernel;
@@ -10,14 +16,28 @@ public class ArticleSummarizer : IArticleSummarizer
         _kernel = kernel;
     }
 
-    public async Task<string> SummarizeAsync(string content)
+    public async Task<ArticleSummary> SummarizeAsync(string content)
     {
-        var summarizeFunc = _kernel.CreateFunctionFromPrompt("Summarize the article in 20 words and extract all names of entities, people, countries, organizations, and event dates from this news article as search keywords. Put the Summary under <Summary> tag entity and <Entity> tag:\n{{$input}}");
+        var summarizeFunc = _kernel.CreateFunctionFromPrompt(@"
+   Respond ONLY in valid JSON with this format (no prose, no comments):
+    {
+       // This is the summary of the article in 30 words
+      ""summary"": ""..."",
+        // This is the list of keywords like people, entities, organizations etc extracted from the article maximum of 10
+      ""keywords"": [""..."", ""..."", ""...""]
+    }
+    Article: {{$input}}");
         var result = await _kernel.InvokeAsync(summarizeFunc, new() { ["input"] = content });
-        return result.ToString();
+        var doc = System.Text.Json.JsonDocument.Parse(result.ToString());
+        return new ArticleSummary
+        {
+            Summary = doc.RootElement.GetProperty("summary").GetString() ?? string.Empty,
+            Keywords = doc.RootElement.GetProperty("keywords").EnumerateArray().Select(k => k.GetString() ?? string.Empty).ToList(),
+            Urls = new List<string>() // Placeholder for URLs, if needed
+        };  
     }
 
-    public async Task<string> ExtractEntitiesAsync(string content)
+    public async Task<ArticleSummary> ExtractEntitiesAsync(string content)
     {
         // For now, reuse SummarizeAsync output
         return await SummarizeAsync(content);

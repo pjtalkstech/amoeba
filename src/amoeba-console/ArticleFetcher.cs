@@ -21,6 +21,7 @@ public class ArticleFetcher : IArticleFetcher
     {
         try
         {
+            Console.WriteLine($"Fetching article content from {url}");
             using var http = new HttpClient();
             var html = await http.GetStringAsync(url);
             var doc = new HtmlDocument();
@@ -30,10 +31,12 @@ public class ArticleFetcher : IArticleFetcher
             {
                 return string.Join("\n", paragraphs.Select(p => p.InnerText.Trim()).Where(t => !string.IsNullOrWhiteSpace(t)));
             }
+
             return doc.DocumentNode.InnerText;
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"Error fetching article content: {ex.Message}");
             return string.Empty;
         }
     }
