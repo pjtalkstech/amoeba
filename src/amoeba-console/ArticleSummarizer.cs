@@ -12,7 +12,7 @@ public class ArticleSummarizer : IArticleSummarizer
 
     public async Task<string> SummarizeAsync(string content)
     {
-        var summarizeFunc = _kernel.CreateFunctionFromPrompt("Summarize the article in 20 words and extract all names of entities, people, countries, organizations, and event dates from this news article as search keywords:\n{{$input}}");
+        var summarizeFunc = _kernel.CreateFunctionFromPrompt("Summarize the article in 20 words and extract all names of entities, people, countries, organizations, and event dates from this news article as search keywords. Put the Summary under <Summary> tag entity and <Entity> tag:\n{{$input}}");
         var result = await _kernel.InvokeAsync(summarizeFunc, new() { ["input"] = content });
         return result.ToString();
     }

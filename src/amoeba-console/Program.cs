@@ -41,14 +41,13 @@ class Program
         var entityResult = await summarizer.SummarizeAsync(selected.Summary.Text);
         string ExtractSummary(string output)
         {
-            var lines = output.Split('\n');
-            foreach (var line in lines)
+            var match = System.Text.RegularExpressions.Regex.Match(output, @"<Summary>(.*?)</Summary>", System.Text.RegularExpressions.RegexOptions.Singleline);
+            if (match.Success)
             {
-                if (line.Trim().StartsWith("Summary:", StringComparison.OrdinalIgnoreCase))
-                {
-                    return line.Substring("Summary:".Length).Trim();
-                }
+                return match.Groups[1].Value.Trim();
             }
+            // fallback: first non-empty line
+            var lines = output.Split('\n');
             foreach (var line in lines)
             {
                 if (!string.IsNullOrWhiteSpace(line))
@@ -66,15 +65,30 @@ class Program
         // For each article in results, check if related and summarize
         if (results != null)
         {
+            // Fire all fetches in parallel
+            var fetchTasks = results.Select(article => articleFetcher.FetchArticleContentAsync(article.Url)).ToList();
+            var contents = await Task.WhenAll(fetchTasks);
+
             var relatedArticles = new List<(string Title, string Content)>();
-            foreach (var article in results)
+            var checkTasks = new List<Task>();
+            for (int i = 0; i < results.Count(); i++)
             {
-                var content = await articleFetcher.FetchArticleContentAsync(article.Url);
+                var article = results.ElementAt(i);
+                var content = contents[i];
                 if (string.IsNullOrWhiteSpace(content)) continue;
-                var isRelated = await summarizer.IsRelatedAsync(summary, content);
-                if (!isRelated) continue;
-                relatedArticles.Add((article.Title, content));
+                // Optionally, parallelize this too:
+                checkTasks.Add(Task.Run(async () => {
+                    var isRelated = await summarizer.IsRelatedAsync(summary, content);
+                    if (isRelated)
+                    {
+                        lock (relatedArticles)
+                        {
+                            relatedArticles.Add((article.Title, content));
+                        }
+                    }
+                }));
             }
+            await Task.WhenAll(checkTasks);
             var finalSummary = await summarizer.SummarizeRelatedArticlesAsync(relatedArticles);
             Console.WriteLine("\nSummaries of related articles:\n" + finalSummary);
         }
