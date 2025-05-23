@@ -60,7 +60,7 @@ sequenceDiagram
 ## Requirements
 - .NET 9.0+
 - [Ollama](https://ollama.com/) running locally (for LLM)
-- [Searx](https://searx.github.io/searx/) instance for news search
+- [Searx](https://searx.github.io/searx/) instance for news search. I chose to run a pre built docker container. Dont forget to enable json format etc/searchrxng/setting.yml under formats add json
 
 ## How to Run
 1. Clone the repo
